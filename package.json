@@ -2,9 +2,12 @@
   "name": "scuttlebutt_to_ap",
   "version": "1.0.0",
   "dependencies": {
-    "ssb-client": "latest",
+    "express": "latest",
+    "node-fetch": "latest",
     "pull-stream": "latest",
+    "ssb-client": "latest",
+    "ssb-friends": "latest",
     "stream-to-pull-stream": "latest",
-    "node-fetch": "latest"
+    "http": "latest"
   }
 }

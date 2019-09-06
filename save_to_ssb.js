@@ -89,7 +89,7 @@ async function get_last_by_activity_id(id) {
      */
 
     let last = null;
-    
+
     let out = new Promise((resolve, reject) => {
         ssbClient((err, sbot) => {
             pull(
@@ -157,13 +157,13 @@ function add_ssb_message(type, id, actor, summary, object, origin = null, target
     let actor_id = actor.id;
     delete actor.id;
     let actor_promise = createBlobObject(actor_type, actor_id, actor);
-    
+
     let object_type = object.type;
     delete object.type;
     let object_id = object.id;
     delete object.id;
     let object_promise = createBlobObject(object_type, object_id, object);
-    
+
     Promise.all([actor_promise, object_promise]).then(([actor_blob, object_blob]) => {
         ssbClient((err, sbot) => {
             if (err) throw err;
@@ -196,7 +196,7 @@ function add_ssb_message(type, id, actor, summary, object, origin = null, target
             sbot.close();
         });
     })
-    
+
 }
 
 async function get_json_from_blob(blob_id){
@@ -266,9 +266,9 @@ async function restore_ssb_message(id){
     return await out;
 }
 
-exports.bridge = {
+module.exports = {
     save : (message) => {
-        if (message.@context === "https://www.w3.org/ns/activitystreams") {
+        if (message["@context"] === "https://www.w3.org/ns/activitystreams") { //todo: should be @context
 
             add_ssb_message(
                 message.type,
@@ -284,9 +284,5 @@ exports.bridge = {
             throw ("Invalid message context.");
         }
     },
-    restore: (id) => {
-        let p = restore_ssb_message(id);
-
-        return p;
-    }
+    restore: restore_ssb_message
 };
