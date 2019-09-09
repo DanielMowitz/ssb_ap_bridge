@@ -37,10 +37,7 @@ function get_webfinger(req, res) {
         let name = resource.replace('acct:','');
         name = name.substr(0,name.indexOf('@'));
 
-        // This might help with webfinger detection
-        // let encoded_name = encodeURIComponent(name);
-
-        let p = check_if_in_friends(name);
+        let p = check_if_in_friends(name + "=.ed25519");
 
         p.then((result) => {
             if (result) {
@@ -50,7 +47,7 @@ function get_webfinger(req, res) {
                         links: [
                             {
                                 rel: 'self',
-                                type: 'application/activitypub+json',
+                                type: 'application/activity+json',
                                 href: `https://${DOMAIN}/u/${name}`
                             }
                         ],
@@ -72,10 +69,7 @@ function get_user(req, res){
     }
     else {
 
-        // This might help with webfinger detection
-        // let encoded_name = encodeURIComponent(name);
-
-        let p = check_if_in_friends(name);
+        let p = check_if_in_friends(name + "=.ed25519");
 
         p.then((result) => {
             if (result) {
