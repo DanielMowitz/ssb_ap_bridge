@@ -1,11 +1,29 @@
 const config = require('./config');
 const ssbClient = require('ssb-client');
 const pull = require('pull-stream');
+const ssb_bridge = require('./save_to_ssb');
 
 DOMAIN = config.DOMAIN;
 
-async function check_if_in_friends(name){
+let chars_to_encode = "_!*'();:@&=+$,/?#[]"; // basically anything covered by %-encoding plus underscore
+
+function encode_webfinger_name(name) {
+    for (let i in chars_to_encode) {
+        name = name.replace(chars_to_encode[i], "_" + chars_to_encode[i].charCodeAt(0).toString(16) + "_");
+    }
+    return name;
+}
+
+function decode_webfinger_name(name) {
+    for (let i in chars_to_encode) {
+        name = name.replace("_" + chars_to_encode[i].charCodeAt(0).toString(16) + "_", chars_to_encode[i]);
+    }
+    return name
+}
+
+async function check_if_in_friends(name) {
     let result = false;
+    name = decode_webfinger_name(name);
     let out = new Promise((resolve, reject) => {
         ssbClient((err, sbot) => {
             if (err) reject(err);
@@ -28,14 +46,31 @@ async function check_if_in_friends(name){
     return await out;
 }
 
+async function get_friends() {
+    let out = new Promise((resolve, reject) => {
+        ssbClient((err, sbot) => {
+            if (err) reject(err);
+
+            pull(
+                sbot.friends.createFriendStream(),
+                pull.collect((err, array) => {
+                    sbot.close();
+                    resolve(array);
+                })
+            );
+        });
+    });
+    return await out;
+}
+
 function get_webfinger(req, res) {
     let resource = req.query.resource;
     if (!resource || !resource.includes('acct:')) {
         return res.status(400).send('Bad request. Please make sure "acct:USER@DOMAIN" is what you are sending as the "resource" query parameter.');
-    }
-    else {
-        let name = resource.replace('acct:','');
-        name = name.substr(0,name.indexOf('@'));
+    } else {
+        let name = resource.replace('acct:', '');
+        name = name.substr(0, name.indexOf('@'));
+        let encoded_name = encodeURIComponent(name);
 
         let p = check_if_in_friends(name + "=.ed25519");
 
@@ -43,18 +78,18 @@ function get_webfinger(req, res) {
             if (result) {
                 res.json(
                     {
-                        'subject': `acct:${name}@${DOMAIN}`,
+                        'subject': `acct:${encoded_name}@${DOMAIN}`,
                         links: [
                             {
                                 rel: 'self',
                                 type: 'application/activity+json',
-                                href: `https://${DOMAIN}/u/${name}`
+                                href: `https://${DOMAIN}/u/${encoded_name}`
                             }
                         ],
                     }
                 );
             } else {
-                return res.status(404).send(`No record found for ${name}.`);
+                return res.status(404).send(`No record found for ${encoded_name}.`);
             }
         }).catch((err) => {
             return res.status(500).send(`An error occured: ${err}.`);
@@ -62,12 +97,11 @@ function get_webfinger(req, res) {
     }
 }
 
-function get_user(req, res){
+function get_user(req, res) {
     let name = req.params.name;
     if (!name) {
         return res.status(400).send('Bad request.');
-    }
-    else {
+    } else {
 
         let p = check_if_in_friends(name + "=.ed25519");
 
@@ -83,8 +117,9 @@ function get_user(req, res){
 
                         id: `https://${DOMAIN}/u/${name}`,
                         type: 'Person',
-                        preferredUsername: 'TESTPERSON PLS CHANGE', //todo: read from latest about message
-                        inbox: `https://${DOMAIN}/u/${name}/inbox`,
+                        preferredUsername: 'TESTPERSON', //todo: read from latest about message
+                        // inbox: `https://${DOMAIN}/u/${name}/inbox`,
+                        inbox: `https://${DOMAIN}/inbox`,
 
                         publicKey: {
                             id: `https://${DOMAIN}/u/${name}#main-key`,
@@ -101,7 +136,7 @@ function get_user(req, res){
                         }
                     }
                 );
-            }else {
+            } else {
                 return res.status(404).send(`No record found for ${name}.`);
             }
         }).catch((err) => {
@@ -110,7 +145,38 @@ function get_user(req, res){
     }
 }
 
+function get_users(req, res) {
+    let p = get_friends();
+
+    p.then((result) => {
+        if (result) {
+            let out = {};
+            for (let i in result) {
+                out[i] = encode_webfinger_name(result[i].substr(1).replace("=.ed25519", ""));
+            }
+            res.json(out);
+        } else {
+            return res.status(404).send(`No record found for ${name}.`);
+        }
+    }).catch((err) => {
+        return res.status(500).send(`An error occured: ${err}.`);
+    })
+}
+
+function post_inbox(req, res) {
+    console.log("Saved activity to ssb log.");
+    try {
+        let in_activity = JSON.parse(req.body.toString());
+        ssb_bridge.save(in_activity);
+    } catch (e) {
+
+    }
+    return res.status(200).send('ayy\n');
+}
+
 module.exports = {
     get_user,
-    get_webfinger
+    get_webfinger,
+    get_users,
+    post_inbox,
 };

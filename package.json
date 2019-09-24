@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "dependencies": {
     "express": "latest",
+    "http": "latest",
     "node-fetch": "latest",
     "pull-stream": "latest",
     "ssb-client": "latest",
     "ssb-friends": "latest",
     "stream-to-pull-stream": "latest",
-    "http": "latest"
+    "body-parser": "latest"
   }
 }

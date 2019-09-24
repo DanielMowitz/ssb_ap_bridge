@@ -3,16 +3,16 @@ const pull = require('pull-stream');
 
 const allowed_message_types = [ //valid activitypub message types
     'create',
-	'update',
-	'delete',
-	'follow',
-	'update',
-	'reject',
-	'add',
-	'remove',
-	'like',
-	'announce',
-	'undo'
+    'update',
+    'delete',
+    'follow',
+    'update',
+    'reject',
+    'add',
+    'remove',
+    'like',
+    'announce',
+    'undo'
 ];
 
 async function createBlobObject(type, objectId, otherData) {
@@ -99,16 +99,16 @@ async function get_last_by_activity_id(id) {
                     if (err) reject(err);
                     for (let i in array) {
                         if (array[i].value.content.type.length > 3 &&
-                            array[i].value.content.type.substr(0,3) === 'ap-' &&
+                            array[i].value.content.type.substr(0, 3) === 'ap-' &&
                             allowed_message_types.indexOf(array[i].value.content.type.substr(3)) >= 0) {
                             if (array[i].value.content.id === id) {
                                 last = array[i];
                             }
                         }
                     }
-                    if (last){
+                    if (last) {
                         resolve(last);
-                    }else {
+                    } else {
                         reject('no activity found');
                     }
 
@@ -199,7 +199,7 @@ function add_ssb_message(type, id, actor, summary, object, origin = null, target
 
 }
 
-async function get_json_from_blob(blob_id){
+async function get_json_from_blob(blob_id) {
 
     /*
      * Gets the Object with the specified id from the
@@ -225,7 +225,7 @@ async function get_json_from_blob(blob_id){
     return await out;
 }
 
-async function restore_ssb_message(id){
+async function restore_ssb_message(id) {
 
     /*
      * Gets the Message with the specified id from the
@@ -246,12 +246,12 @@ async function restore_ssb_message(id){
                 msg.type = msg.type.substr(3);
 
                 delete msg.actor.otherData;
-                for (let key in actor_data){
+                for (let key in actor_data) {
                     msg.actor[key] = actor_data[key];
                 }
 
                 delete msg.object.otherData;
-                for (let key in object_data){
+                for (let key in object_data) {
                     msg.object[key] = object_data[key];
                 }
 
@@ -267,8 +267,8 @@ async function restore_ssb_message(id){
 }
 
 module.exports = {
-    save : (message) => {
-        if (message["@context"] === "https://www.w3.org/ns/activitystreams") { //todo: should be @context
+    save: (message) => {
+        if (message["@context"] === "https://www.w3.org/ns/activitystreams") {
 
             add_ssb_message(
                 message.type,
