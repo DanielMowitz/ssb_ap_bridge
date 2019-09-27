@@ -1,66 +1,23 @@
 const config = require('./config');
-const ssbClient = require('ssb-client');
-const pull = require('pull-stream');
-const ssb_bridge = require('./save_to_ssb');
+const ssb_bridge = require('./ssb_bridge');
 
 DOMAIN = config.DOMAIN;
 
 let chars_to_encode = "_!*'();:@&=+$,/?#[]"; // basically anything covered by %-encoding plus underscore
 
-function encode_webfinger_name(name) {
-    for (let i in chars_to_encode) {
-        name = name.replace(chars_to_encode[i], "_" + chars_to_encode[i].charCodeAt(0).toString(16) + "_");
-    }
-    return name;
-}
-
 function decode_webfinger_name(name) {
+    name = name + "=.ed25519";
     for (let i in chars_to_encode) {
         name = name.replace("_" + chars_to_encode[i].charCodeAt(0).toString(16) + "_", chars_to_encode[i]);
     }
     return name
 }
 
-async function check_if_in_friends(name) {
-    let result = false;
-    name = decode_webfinger_name(name);
-    let out = new Promise((resolve, reject) => {
-        ssbClient((err, sbot) => {
-            if (err) reject(err);
-
-            pull(
-                sbot.friends.createFriendStream(),
-                pull.collect((err, array) => {
-                    array.forEach(function (actor) {
-                        let short_actor = (actor.substr(1));
-                        if (short_actor === name) {
-                            result = true;
-                        }
-                    });
-                    sbot.close();
-                    resolve(result);
-                })
-            );
-        });
-    });
-    return await out;
-}
-
-async function get_friends() {
-    let out = new Promise((resolve, reject) => {
-        ssbClient((err, sbot) => {
-            if (err) reject(err);
-
-            pull(
-                sbot.friends.createFriendStream(),
-                pull.collect((err, array) => {
-                    sbot.close();
-                    resolve(array);
-                })
-            );
-        });
-    });
-    return await out;
+function encode_webfinger_name(name) {
+    for (let i in chars_to_encode) {
+        name = name.replace(chars_to_encode[i], "_" + chars_to_encode[i].charCodeAt(0).toString(16) + "_");
+    }
+    return name;
 }
 
 function get_webfinger(req, res) {
@@ -72,7 +29,7 @@ function get_webfinger(req, res) {
         name = name.substr(0, name.indexOf('@'));
         let encoded_name = encodeURIComponent(name);
 
-        let p = check_if_in_friends(name + "=.ed25519");
+        let p = ssb_bridge.check_if_in_friends(decode_webfinger_name(name));
 
         p.then((result) => {
             if (result) {
@@ -103,10 +60,21 @@ function get_user(req, res) {
         return res.status(400).send('Bad request.');
     } else {
 
-        let p = check_if_in_friends(name + "=.ed25519");
+        let p = ssb_bridge.check_if_in_friends(decode_webfinger_name(name));
 
         p.then((result) => {
             if (result) {
+
+                let uname_p = ssb_bridge.get_username(decode_webfinger_name(name));
+                let uname = '';
+
+                uname_p.then((uname_res) => {
+                    uname = uname_res;
+                });
+
+                if (uname === '') {
+                    uname = name;
+                }
 
                 res.json(
                     {
@@ -117,7 +85,8 @@ function get_user(req, res) {
 
                         id: `https://${DOMAIN}/u/${name}`,
                         type: 'Person',
-                        preferredUsername: 'TESTPERSON', //todo: read from latest about message
+                        preferredUsername: uname, //todo: read from latest about message
+                        name: uname,
                         // inbox: `https://${DOMAIN}/u/${name}/inbox`,
                         inbox: `https://${DOMAIN}/inbox`,
 
@@ -146,7 +115,7 @@ function get_user(req, res) {
 }
 
 function get_users(req, res) {
-    let p = get_friends();
+    let p = ssb_bridge.get_friends();
 
     p.then((result) => {
         if (result) {

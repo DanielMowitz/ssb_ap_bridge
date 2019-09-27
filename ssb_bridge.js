@@ -266,6 +266,81 @@ async function restore_ssb_message(id) {
     return await out;
 }
 
+async function check_if_in_friends(name) {
+    let result = false;
+    let out = new Promise((resolve, reject) => {
+        ssbClient((err, sbot) => {
+            if (err) reject(err);
+
+            pull(
+                sbot.friends.createFriendStream(),
+                pull.collect((err, array) => {
+                    array.forEach(function (actor) {
+                        let short_actor = (actor.substr(1));
+                        if (short_actor === name) {
+                            result = true;
+                        }
+                    });
+                    sbot.close();
+                    resolve(result);
+                })
+            );
+        });
+    });
+    return await out;
+}
+
+async function get_friends() {
+    let out = new Promise((resolve, reject) => {
+        ssbClient((err, sbot) => {
+            if (err) reject(err);
+
+            pull(
+                sbot.friends.createFriendStream(),
+                pull.collect((err, array) => {
+                    sbot.close();
+                    resolve(array);
+                })
+            );
+        });
+    });
+    return await out;
+}
+
+async function get_username(name) {
+
+    let last = null;
+
+    let out = new Promise((resolve, reject) => {
+        ssbClient((err, sbot) => {
+            pull(
+                sbot.createLogStream(),
+                pull.collect(function (err, array) {
+                    sbot.close();
+                    if (err) reject(err);
+                    console.log(array);
+                    console.log(name);
+                    for (let i in array) {
+                        if (array[i].value.content.type === 'about' &&
+                            array[i].value.author.substr(1) === name &&
+                            array[i].value.content.hasOwnProperty('name')) {
+                            last = array[i].value.content.name;
+                        }
+                    }
+                    if (last) {
+                        resolve(last);
+                    } else {
+                        resolve('');
+                    }
+
+                }),
+            );
+        });
+    });
+
+    return await out;
+}
+
 module.exports = {
     save: (message) => {
         if (message["@context"] === "https://www.w3.org/ns/activitystreams") {
@@ -284,5 +359,8 @@ module.exports = {
             throw ("Invalid message context.");
         }
     },
-    restore: restore_ssb_message
+    restore: restore_ssb_message,
+    check_if_in_friends,
+    get_friends,
+    get_username
 };
