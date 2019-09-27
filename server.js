@@ -85,7 +85,7 @@ function get_user(req, res) {
 
                         id: `https://${DOMAIN}/u/${name}`,
                         type: 'Person',
-                        preferredUsername: uname, //todo: read from latest about message
+                        preferredUsername: uname, 
                         name: uname,
                         // inbox: `https://${DOMAIN}/u/${name}/inbox`,
                         inbox: `https://${DOMAIN}/inbox`,
